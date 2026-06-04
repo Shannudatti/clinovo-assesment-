@@ -1,23 +1,54 @@
-// ─────────────────────────────────────────────
 // Imports
-// ─────────────────────────────────────────────
 import { useEffect, useState } from "react";
 import jsPDF from "jspdf";
 
 import Registration from "./components/Registration";
 import MCQSection from "./components/MCQSection";
 import CodingSection from "./components/CodingSection";
+import AptitudeSection from "./components/AptitudeSection";
 import Timer from "./components/Timer";
 
 import { pythonMCQs, pythonCoding } from "./data/pythonQuestions";
 import { rMCQs, rCoding } from "./data/rQuestions";
 import { sasMCQs, sasCoding } from "./data/sasQuestions";
+import {
+  aptitudeMCQs,
+  verbalAbilityMCQs,
+  verbalReasoningMCQs,
+  dataInterpretationMCQs,
+  logicBuildingMCQs,
+} from "./data/aptitudeQuestions";
 import { getAssessmentQuestions } from "./utils/randomizer";
 
 // ─────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────
 const MAX_VIOLATIONS = 3;
+
+// Aptitude subsections — mandatory for every candidate
+const APTITUDE_SECTIONS = [
+  { title: "Aptitude", sectionKey: "aptitude", questions: aptitudeMCQs },
+  {
+    title: "Verbal Ability",
+    sectionKey: "verbalAbility",
+    questions: verbalAbilityMCQs,
+  },
+  {
+    title: "Verbal Reasoning",
+    sectionKey: "verbalReasoning",
+    questions: verbalReasoningMCQs,
+  },
+  {
+    title: "Data Interpretation",
+    sectionKey: "dataInterpretation",
+    questions: dataInterpretationMCQs,
+  },
+  {
+    title: "Logic Building",
+    sectionKey: "logicBuilding",
+    questions: logicBuildingMCQs,
+  },
+];
 
 // ─────────────────────────────────────────────
 // Styles
@@ -28,7 +59,7 @@ const styles = {
     minHeight: "100vh",
     background: "linear-gradient(90deg, #04122B, #162F5C)",
     padding: "20px",
-    paddingBottom: "100px", // space for fixed submit bar
+    paddingBottom: "100px",
   },
 
   // ── Header bar ──
@@ -43,11 +74,7 @@ const styles = {
     flexWrap: "wrap",
     gap: "12px",
   },
-  headerLogo: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-  },
+  headerLogo: { display: "flex", alignItems: "center", gap: "10px" },
   headerLogoIcon: {
     width: 34,
     height: 34,
@@ -65,33 +92,42 @@ const styles = {
     color: "#04122B",
     margin: 0,
   },
-  headerLogoSub: {
-    fontSize: "11px",
-    color: "#94A3B8",
-    margin: 0,
-  },
+  headerLogoSub: { fontSize: "11px", color: "#94A3B8", margin: 0 },
   headerMeta: {
     display: "flex",
     alignItems: "center",
     gap: "24px",
     flexWrap: "wrap",
   },
-  headerMetaItem: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1px",
-  },
-  headerMetaLabel: {
-    fontSize: "11px",
-    color: "#94A3B8",
-    fontWeight: 500,
-  },
+  headerMetaItem: { display: "flex", flexDirection: "column", gap: "1px" },
+  headerMetaLabel: { fontSize: "11px", color: "#94A3B8", fontWeight: 500 },
   headerMetaValue: (isRed) => ({
     fontSize: "14px",
     fontWeight: 600,
     color: isRed ? "#dc2626" : "#04122B",
     margin: 0,
   }),
+
+  // ── Section divider label ──
+  sectionDivider: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    margin: "24px 0 12px",
+  },
+  sectionDividerLine: {
+    flex: 1,
+    height: "1px",
+    background: "rgba(255,255,255,0.12)",
+  },
+  sectionDividerLabel: {
+    fontSize: "11px",
+    fontWeight: 600,
+    letterSpacing: "0.08em",
+    color: "rgba(255,255,255,0.35)",
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+  },
 
   // ── Fixed submit bar ──
   submitBarWrap: {
@@ -109,21 +145,9 @@ const styles = {
     gap: "16px",
     flexWrap: "wrap",
   },
-  submitBarInfo: {
-    display: "flex",
-    gap: "28px",
-    flexWrap: "wrap",
-  },
-  submitBarMetaItem: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1px",
-  },
-  submitBarMetaLabel: {
-    fontSize: "11px",
-    color: "#64748B",
-    fontWeight: 500,
-  },
+  submitBarInfo: { display: "flex", gap: "28px", flexWrap: "wrap" },
+  submitBarMetaItem: { display: "flex", flexDirection: "column", gap: "1px" },
+  submitBarMetaLabel: { fontSize: "11px", color: "#64748B", fontWeight: 500 },
   submitBarMetaValue: (isRed) => ({
     fontSize: "14px",
     fontWeight: 500,
@@ -293,6 +317,16 @@ const addLine = (pdf, text, y) => {
 // Sub-components
 // ─────────────────────────────────────────────
 
+function SectionDivider({ label }) {
+  return (
+    <div style={styles.sectionDivider}>
+      <div style={styles.sectionDividerLine} />
+      <span style={styles.sectionDividerLabel}>{label}</span>
+      <div style={styles.sectionDividerLine} />
+    </div>
+  );
+}
+
 function HeaderBar({ candidate, violations, timerEl }) {
   return (
     <div style={styles.headerBar}>
@@ -326,7 +360,7 @@ function HeaderBar({ candidate, violations, timerEl }) {
   );
 }
 
-function SubmitBar({ candidate, violations, onSubmit }) {
+function SubmitBar({ candidate, violations, onSubmit ,isSubmitting,}) {
   return (
     <div style={styles.submitBarWrap}>
       <div style={styles.submitBarInfo}>
@@ -347,9 +381,25 @@ function SubmitBar({ candidate, violations, onSubmit }) {
           </p>
         </div>
       </div>
-      <button style={styles.submitBtn} onClick={onSubmit}>
-         Submit Assessment
-      </button>
+      <button
+  style={{
+    ...styles.submitBtn,
+    opacity: isSubmitting ? 0.7 : 1,
+    cursor: isSubmitting ? "not-allowed" : "pointer",
+  }}
+  onClick={onSubmit}
+  disabled={isSubmitting}
+>
+  {isSubmitting ? (
+    <>
+      ⏳ Submitting...
+    </>
+  ) : (
+    <>
+      Submit Assessment
+    </>
+  )}
+</button>
     </div>
   );
 }
@@ -358,17 +408,12 @@ function ThankYouPage({ candidate, violations }) {
   return (
     <div style={styles.tyPage}>
       <div style={styles.tyInner}>
-        {/* Icon */}
         <div style={styles.tyIconRing}>
           <span style={{ fontSize: 30, color: "#22c55e" }}>✓</span>
         </div>
 
         <h1 style={styles.tyHeading}>Assessment submitted</h1>
-       
 
-       
-
-        {/* Summary card */}
         <div style={styles.tySummaryCard}>
           <div style={styles.tySummaryHeader}>Submission summary</div>
           <div style={styles.tySummaryBody}>
@@ -378,11 +423,15 @@ function ThankYouPage({ candidate, violations }) {
             </div>
             <div style={styles.tySummaryRow}>
               <span style={styles.tySummaryLabel}>✉ Email</span>
-              <span style={styles.tySummaryValue(false)}>{candidate.email}</span>
+              <span style={styles.tySummaryValue(false)}>
+                {candidate.email}
+              </span>
             </div>
             <div style={styles.tySummaryRow}>
               <span style={styles.tySummaryLabel}>📱 Phone</span>
-              <span style={styles.tySummaryValue(false)}>+91 {candidate.phone}</span>
+              <span style={styles.tySummaryValue(false)}>
+                +91 {candidate.phone}
+              </span>
             </div>
             <div style={styles.tySummaryRow}>
               <span style={styles.tySummaryLabel}>💻 Technologies</span>
@@ -421,9 +470,14 @@ export default function App() {
   const [examData, setExamData] = useState(null);
   const [answers, setAnswers] = useState({});
   const [codes, setCodes] = useState({ python: "", r: "", sas: "" });
-  const [testResults, setTestResults] = useState({ python: null, r: null, sas: null });
+  const [testResults, setTestResults] = useState({
+    python: null,
+    r: null,
+    sas: null,
+  });
   const [violations, setViolations] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ── Helpers ────────────────────────────────
   const enterFullscreen = async () => {
@@ -441,7 +495,7 @@ export default function App() {
   const startAssessment = async (candidateData) => {
     await enterFullscreen();
 
-    const totalMinutes = candidateData.languages.length * 20;
+    const totalMinutes = 20 + candidateData.languages.length * 20;
     setCandidate({ ...candidateData, examMinutes: totalMinutes });
 
     const exam = {};
@@ -464,17 +518,13 @@ export default function App() {
   };
 
   const submitAssessment = async () => {
+     if (isSubmitting) return;
+
+  setIsSubmitting(true);
+  try {
     const pdf = new jsPDF();
     let y = 10;
     let totalMCQScore = 0;
-
-    const sections = [];
-    if (candidate.languages.includes("python"))
-      sections.push({ name: "PYTHON", questions: examData.pythonMCQs, coding: examData.pythonCoding, code: codes.python, result: testResults.python });
-    if (candidate.languages.includes("r"))
-      sections.push({ name: "R", questions: examData.rMCQs, coding: examData.rCoding, code: codes.r, result: testResults.r });
-    if (candidate.languages.includes("sas"))
-      sections.push({ name: "SAS", questions: examData.sasMCQs, coding: examData.sasCoding, code: codes.sas, result: testResults.sas });
 
     // Cover page
     pdf.setFontSize(18);
@@ -488,8 +538,62 @@ export default function App() {
     y = addLine(pdf, `Violations: ${violations}`, y);
     y += 10;
 
-    // Per-language sections
-    sections.forEach((section) => {
+    // ── Aptitude sections (mandatory) ──
+    APTITUDE_SECTIONS.forEach((section) => {
+      pdf.addPage();
+      y = 10;
+      let sectionScore = 0;
+
+      pdf.setFontSize(16);
+      pdf.text(`${section.title.toUpperCase()} SECTION`, 10, y);
+      y += 10;
+
+      section.questions.forEach((q, index) => {
+        const answerKey = `${section.sectionKey}_${q.id}`;
+        const selected = answers[answerKey] || "Not Answered";
+        const correct = q.answer;
+        const marks = selected === correct ? 1 : 0;
+        sectionScore += marks;
+        totalMCQScore += marks;
+        y = addLine(pdf, `Q${index + 1}. ${q.question}`, y);
+        y = addLine(pdf, `Selected Answer: ${selected}`, y);
+        y = addLine(pdf, `Correct Answer: ${correct}`, y);
+        y = addLine(pdf, `Marks: ${marks}/1`, y);
+        y += 4;
+      });
+
+      y += 5;
+      y = addLine(pdf, `Score: ${sectionScore}/${section.questions.length}`, y);
+    });
+
+    // ── Language MCQ + Coding sections ──
+    const langSections = [];
+    if (candidate.languages.includes("python"))
+      langSections.push({
+        name: "PYTHON",
+        questions: examData.pythonMCQs,
+        coding: examData.pythonCoding,
+        code: codes.python,
+        result: testResults.python,
+      });
+    if (candidate.languages.includes("r"))
+      langSections.push({
+        name: "R",
+        questions: examData.rMCQs,
+        coding: examData.rCoding,
+        code: codes.r,
+        result: testResults.r,
+      });
+    if (candidate.languages.includes("sas"))
+      langSections.push({
+        name: "SAS",
+        questions: examData.sasMCQs,
+        coding: examData.sasCoding,
+        code: codes.sas,
+        result: testResults.sas,
+      });
+
+    langSections.forEach((section) => {
       pdf.addPage();
       y = 10;
       let sectionScore = 0;
@@ -513,13 +617,22 @@ export default function App() {
       });
 
       y += 5;
-      y = addLine(pdf, `MCQ Score: ${sectionScore}/${section.questions.length}`, y);
+      y = addLine(
+        pdf,
+        `MCQ Score: ${sectionScore}/${section.questions.length}`,
+        y,
+      );
       y += 10;
+
       pdf.setFontSize(16);
       pdf.text(`${section.name} CODING`, 10, y);
       y += 10;
       y = addLine(pdf, `Question Title: ${section.coding?.title || "N/A"}`, y);
-      y = addLine(pdf, `Description: ${section.coding?.description || "N/A"}`, y);
+      y = addLine(
+        pdf,
+        `Description: ${section.coding?.description || "N/A"}`,
+        y,
+      );
       y += 5;
       y = addLine(pdf, "Candidate Code:", y);
       y = addLine(pdf, section.code || "No code submitted", y);
@@ -530,18 +643,24 @@ export default function App() {
       y = addLine(pdf, "Coding Marks: Pending Manual Evaluation (10 Marks)", y);
     });
 
-    // Final summary
+    // ── Final summary ──
     pdf.addPage();
     y = 10;
     pdf.setFontSize(16);
     pdf.text("FINAL SUMMARY", 10, y);
     y += 15;
-    const totalPossibleMarks = sections.reduce((sum, s) => sum + s.questions.length, 0);
-    y = addLine(pdf, `Total MCQ Score: ${totalMCQScore}/${totalPossibleMarks}`, y);
+    const totalPossibleMarks =
+      APTITUDE_SECTIONS.reduce((sum, s) => sum + s.questions.length, 0) +
+      langSections.reduce((sum, s) => sum + s.questions.length, 0);
+    y = addLine(
+      pdf,
+      `Total MCQ Score: ${totalMCQScore}/${totalPossibleMarks}`,
+      y,
+    );
     y = addLine(pdf, "Coding Score: Pending Manual Evaluation", y);
     y = addLine(pdf, `Violations: ${violations}`, y);
 
-    // Send report
+    // ── Send report ──
     const pdfBlob = pdf.output("blob");
     const formData = new FormData();
     formData.append("file", pdfBlob, `${candidate.name}_Assessment.pdf`);
@@ -550,10 +669,13 @@ export default function App() {
     formData.append("candidate_phone", candidate.phone);
 
     try {
-      const response = await fetch("https://clinovo-internal-assessment.vercel.app/send-report", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        "https://clinovo-internal-assessment.vercel.app/send-report",
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
       const data = await response.json();
       console.log("Email API Response:", data);
     } catch (error) {
@@ -561,6 +683,11 @@ export default function App() {
     }
 
     setSubmitted(true);
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setIsSubmitting(false);
+  }
   };
 
   // ── Effects ────────────────────────────────
@@ -571,15 +698,20 @@ export default function App() {
       if (document.hidden && candidate && !submitted) {
         const count = violations + 1;
         setViolations(count);
-        alert(`⚠️ Violation Detected!\n\nYou switched tabs or minimized the exam.\n\nViolations: ${count}/${MAX_VIOLATIONS}`);
+        alert(
+          `⚠️ Violation Detected!\n\nYou switched tabs or minimized the exam.\n\nViolations: ${count}/${MAX_VIOLATIONS}`,
+        );
         if (count >= MAX_VIOLATIONS) {
-          alert("❌ Maximum violations reached.\n\nAssessment will be submitted automatically.");
+          alert(
+            "❌ Maximum violations reached.\n\nAssessment will be submitted automatically.",
+          );
           submitAssessment();
         }
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
   }, [violations, candidate, submitted]);
 
   // Fullscreen exit violation
@@ -588,27 +720,38 @@ export default function App() {
       if (candidate && !submitted && !document.fullscreenElement) {
         const count = violations + 1;
         setViolations(count);
-        alert(`⚠️ Fullscreen Exit Detected!\n\nPlease stay in fullscreen mode.\n\nViolations: ${count}/${MAX_VIOLATIONS}`);
+        alert(
+          `⚠️ Fullscreen Exit Detected!\n\nPlease stay in fullscreen mode.\n\nViolations: ${count}/${MAX_VIOLATIONS}`,
+        );
         if (count >= MAX_VIOLATIONS) {
-          alert("❌ Maximum violations reached.\n\nAssessment will be submitted automatically.");
+          alert(
+            "❌ Maximum violations reached.\n\nAssessment will be submitted automatically.",
+          );
           submitAssessment();
         }
       }
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, [violations, candidate, submitted]);
 
   // Document title violation counter
   useEffect(() => {
-    if (candidate) document.title = `Violations ${violations}/${MAX_VIOLATIONS}`;
+    if (candidate)
+      document.title = `Violations ${violations}/${MAX_VIOLATIONS}`;
   }, [violations, candidate]);
 
   // Block DevTools shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "F12") e.preventDefault();
-      if (e.ctrlKey && e.shiftKey && ["I", "J", "C"].includes(e.key.toUpperCase())) e.preventDefault();
+      if (
+        e.ctrlKey &&
+        e.shiftKey &&
+        ["I", "J", "C"].includes(e.key.toUpperCase())
+      )
+        e.preventDefault();
       if (e.ctrlKey && e.key.toUpperCase() === "U") e.preventDefault();
     };
     document.addEventListener("keydown", handleKeyDown);
@@ -639,7 +782,8 @@ export default function App() {
   if (!candidate) return <Registration onStart={startAssessment} />;
 
   // ── Render: Thank-you ──────────────────────
-  if (submitted) return <ThankYouPage candidate={candidate} violations={violations} />;
+  if (submitted)
+    return <ThankYouPage candidate={candidate} violations={violations} />;
 
   // ── Render: Main exam ──────────────────────
   return (
@@ -647,21 +791,55 @@ export default function App() {
       <HeaderBar
         candidate={candidate}
         violations={violations}
-        timerEl={<Timer minutes={candidate.examMinutes} onFinish={submitAssessment} />}
+        timerEl={
+          <Timer minutes={candidate.examMinutes} onFinish={submitAssessment} />
+        }
       />
 
+      {/* ── Aptitude (mandatory for all) ── */}
+      <SectionDivider label="Aptitude Test " />
+      {APTITUDE_SECTIONS.map((section) => (
+        <AptitudeSection
+          key={section.sectionKey}
+          title={section.title}
+          sectionKey={section.sectionKey}
+          questions={section.questions}
+          answers={answers}
+          setAnswers={setAnswers}
+        />
+      ))}
+
+      {/* ── Language MCQ sections ── */}
       {examData && (
         <>
+          <SectionDivider label="Technical MCQ" />
           {candidate.languages.includes("python") && (
-            <MCQSection language="python" questions={examData.pythonMCQs} answers={answers} setAnswers={setAnswers} />
+            <MCQSection
+              language="python"
+              questions={examData.pythonMCQs}
+              answers={answers}
+              setAnswers={setAnswers}
+            />
           )}
           {candidate.languages.includes("r") && (
-            <MCQSection language="r" questions={examData.rMCQs} answers={answers} setAnswers={setAnswers} />
+            <MCQSection
+              language="r"
+              questions={examData.rMCQs}
+              answers={answers}
+              setAnswers={setAnswers}
+            />
           )}
           {candidate.languages.includes("sas") && (
-            <MCQSection language="sas" questions={examData.sasMCQs} answers={answers} setAnswers={setAnswers} />
+            <MCQSection
+              language="sas"
+              questions={examData.sasMCQs}
+              answers={answers}
+              setAnswers={setAnswers}
+            />
           )}
 
+          {/* ── Coding sections ── */}
+          <SectionDivider label="Coding Challenge" />
           {candidate.languages.includes("python") && (
             <CodingSection
               language="python"
@@ -692,7 +870,12 @@ export default function App() {
         </>
       )}
 
-      <SubmitBar candidate={candidate} violations={violations} onSubmit={submitAssessment} />
+      <SubmitBar
+        candidate={candidate}
+        violations={violations}
+        onSubmit={submitAssessment}
+         isSubmitting={isSubmitting}
+      />
     </div>
   );
 }

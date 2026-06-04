@@ -54,9 +54,9 @@ export default function Registration({ onStart }) {
 
   const durationText =
     langs.length === 2
-      ? "40 minutes · 2 technologies selected"
+      ? "60 minutes · 2 technologies selected"
       : langs.length === 3
-        ? "60 minutes · 3 technologies selected"
+        ? "80 minutes · 3 technologies selected"
         : "Select 2+ technologies to see duration";
 
   const durationReady = langs.length >= 2;
@@ -189,7 +189,8 @@ export default function Registration({ onStart }) {
                 ["⛶", "Fullscreen mode is required throughout"],
                 ["⚠", "Max 3 violations — auto-submit on 4th"],
                 ["⇄", "Tab switching and browser refresh are prohibited"],
-                ["⏱", "2 technologies = 40 min  ·  3 technologies = 60 min"],
+                ["⏱", "2 technologies = 60 min  ·  3 technologies = 80 min"],
+                ["📝", "Candidates must complete all Aptitude Assessment sections before proceeding to submission"]
               ].map(([icon, text]) => (
                 <div key={text} style={styles.infoRow}>
                   <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>
