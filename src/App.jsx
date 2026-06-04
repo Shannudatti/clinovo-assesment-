@@ -364,9 +364,7 @@ function ThankYouPage({ candidate, violations }) {
         </div>
 
         <h1 style={styles.tyHeading}>Assessment submitted</h1>
-        <p style={styles.tySub}>
-          Your responses have been recorded and the full report has been emailed to you.
-        </p>
+       
 
        
 
