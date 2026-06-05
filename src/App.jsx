@@ -896,7 +896,9 @@ export default function App() {
         <p>
           The assessment will be available shortly.
           Please check back later.
+
         </p>
+        <p>Team Clinovo</p>
       </div>
     </div>
   );
