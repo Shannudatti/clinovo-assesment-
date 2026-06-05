@@ -106,7 +106,7 @@ export default function Registration({ onStart }) {
             <Field label="Full name">
               <input
                 style={styles.input}
-                placeholder="e.g. Praveen kumar"
+                placeholder="e.g. John Doe"
                 value={form.name}
                 onChange={(e) => updateForm("name", e.target.value)}
               />
@@ -186,6 +186,7 @@ export default function Registration({ onStart }) {
 
             <div style={styles.infoBox}>
               {[
+                ["🔄", "Refreshing or closing the page will terminate the assessment and all unsaved and saved answers will be lost"],
                 ["⛶", "Fullscreen mode is required throughout"],
                 ["⚠", "Max 3 violations — auto-submit on 4th"],
                 ["⇄", "Tab switching and browser refresh are prohibited"],
